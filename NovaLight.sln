@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36603.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovaLight", "NovaLight\NovaLight.csproj", "{72B9564B-0510-44B2-B2F4-1C05455A0A9B}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovaLight.Core", "NovaLight.Core\NovaLight.Core.csproj", "{C1874CC5-A6B5-A36D-856D-CAF7500AA7EA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovaLight.Console", "NovaLight.Console\NovaLight.Console.csproj", "{7E1198F2-4327-D529-7B37-863D27AAA1B1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovaLight.Core.Interaction", "NovaLight.Core.Interaction\NovaLight.Core.Interaction.csproj", "{AE86BC5C-5FE6-409E-B0EA-0CA0E0DF93DF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,10 +15,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{72B9564B-0510-44B2-B2F4-1C05455A0A9B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{72B9564B-0510-44B2-B2F4-1C05455A0A9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{72B9564B-0510-44B2-B2F4-1C05455A0A9B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{72B9564B-0510-44B2-B2F4-1C05455A0A9B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C1874CC5-A6B5-A36D-856D-CAF7500AA7EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C1874CC5-A6B5-A36D-856D-CAF7500AA7EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C1874CC5-A6B5-A36D-856D-CAF7500AA7EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -27,6 +23,10 @@ Global
 		{7E1198F2-4327-D529-7B37-863D27AAA1B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7E1198F2-4327-D529-7B37-863D27AAA1B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7E1198F2-4327-D529-7B37-863D27AAA1B1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE86BC5C-5FE6-409E-B0EA-0CA0E0DF93DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE86BC5C-5FE6-409E-B0EA-0CA0E0DF93DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE86BC5C-5FE6-409E-B0EA-0CA0E0DF93DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE86BC5C-5FE6-409E-B0EA-0CA0E0DF93DF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

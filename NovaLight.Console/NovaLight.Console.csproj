@@ -10,8 +10,4 @@
     <PackageReference Include="Terminal.Gui" Version="1.19.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\NovaLight.Core\NovaLight.Core.csproj" />
-  </ItemGroup>
-
 </Project>

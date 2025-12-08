@@ -4,7 +4,7 @@ using System.Runtime.Loader;
 
 namespace NovaLight.Core
 {
-    public class AssemblyContext
+    public class AssemblyContext : IDisposable
     {
         internal AssemblyLoadContext AssemblyLoadContext { get; }
         public Assembly[] Assemblies => [.. AssemblyLoadContext.Assemblies];
@@ -39,10 +39,10 @@ namespace NovaLight.Core
             AssemblyLoadContext = new($"AssemblyContext", isCollectible: true);
 
             AssemblyLoadContext.Unloading += OnUnloading;
-            AssemblyContextContainer.AssemblyContexts.Add(this);
+            AssemblyContextContainer.Add(this);
         }
 
-        public void LoadModuleByPath(string path)
+        public void LoadModule(string path)
         {
             FileInfo file = new(path);
             LoadModule(file);
@@ -56,7 +56,7 @@ namespace NovaLight.Core
             int lenWithoutExtension = file.Name.Length - 3;
             Logger.Log($"Module {file.Name[..(lenWithoutExtension - 1)]} loaded.");
 
-            if (IsActive) assembly.Run();
+            if (IsActive) assembly.InvokeRunHandle();
         }
 
         private Assembly[] ArrangeModulesByDependency()
@@ -102,7 +102,7 @@ namespace NovaLight.Core
             IsActive = true;
             Assembly[] modules = ArrangeModulesByDependency();
             foreach (Assembly assembly in modules)
-                assembly.Run();
+                assembly.InvokeRunHandle();
         }
         public void Stop()
         {
@@ -112,25 +112,26 @@ namespace NovaLight.Core
             IsActive = false;
             Assembly[] reversedModules = [.. ArrangeModulesByDependency().Reverse()];
             foreach (Assembly assembly in reversedModules)
-                assembly.Stop();
+                assembly.InvokeStopHandle();
         }
 
         private void OnUnloading(AssemblyLoadContext assemblyLoadContext)
         {
             AssemblyLoadContext.Unloading -= OnUnloading;
-            AssemblyContextContainer.AssemblyContexts.Remove(this);
+            AssemblyContextContainer.Remove(this);
         }
 
         private bool _disposed = false;
-        public void Unload()
+        public void Dispose()
         {
             if (_disposed) return;
-
             IsActive = false;
             _disposed = true;
-            AssemblyLoadContext.Unload();
 
             Logger.Log("AssemblyContext has been successfully unloaded.");
+
+            AssemblyLoadContext.Unload();
+            GC.SuppressFinalize(this);
         }
     }
 }

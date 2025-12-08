@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using NovaLight.Core.Interaction;
+using System.Reflection;
 using System.Runtime.Loader;
 
 namespace NovaLight.Core
@@ -18,36 +19,49 @@ namespace NovaLight.Core
             return assemblyContext;
         }
 
-        public static void Run(this Assembly assembly)
+        internal static Type[] GetModuleControllerTypes(this Assembly assembly)
         {
-            AssemblyContext assemblyContext = assembly.GetAssemblyContext();
-            Logger logger = assemblyContext.Logger;
-
-            try
-            {
-                assembly.InvokeInteraction<IRunHandler>();
-                logger.Log($"Module {assembly.GetName().Name} has been successfully started.");
-            }
-            catch (Exception exception)
-            {
-                logger.Log($"Error occurred while starting the module: {exception.Message}");
-            }
+            Type[] moduleControllerTypes = [.. assembly.GetTypes()
+                    .Where(x => !x.IsAbstract && typeof(ModuleController).IsAssignableFrom(x))];
+            return moduleControllerTypes;
         }
-
-        public static void Stop(this Assembly assembly)
+        internal static void InvokeRunHandle(this Assembly assembly)
         {
             AssemblyContext assemblyContext = assembly.GetAssemblyContext();
             Logger logger = assemblyContext.Logger;
 
-            try
-            {
-                assembly.InvokeInteraction<IStopHandler>();
-                logger.Log($"Module {assembly.GetName().Name} has been successfully stopped.");
-            }
-            catch (Exception exception)
-            {
-                logger.Log($"Error occurred while stopping the module: {exception.Message}");
-            }
+            Type[] controllerTypes = assembly.GetModuleControllerTypes();
+            foreach (Type type in controllerTypes)
+                try
+                {
+                    ModuleController controller = (ModuleController)Activator.CreateInstance(type)!;
+                    controller.OnModuleRun();
+                }
+                catch (Exception exception)
+                {
+                    logger.Log($"Error occurred while starting the module: {exception.Message}");
+                }
+
+            logger.Log($"Module {assembly.GetName().Name} has been started.");
+        }
+        internal static void InvokeStopHandle(this Assembly assembly)
+        {
+            AssemblyContext assemblyContext = assembly.GetAssemblyContext();
+            Logger logger = assemblyContext.Logger;
+
+            Type[] controllerTypes = assembly.GetModuleControllerTypes();
+            foreach (Type type in controllerTypes)
+                try
+                {
+                    ModuleController controller = (ModuleController)Activator.CreateInstance(type)!;
+                    controller.OnModuleStop();
+                }
+                catch (Exception exception)
+                {
+                    logger.Log($"Error occurred while stopping the module: {exception.Message}");
+                }
+
+            logger.Log($"Module {assembly.GetName().Name} has been stopped.");
         }
     }
 }

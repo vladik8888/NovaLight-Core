@@ -17,7 +17,7 @@ namespace NovaLight.Console
             bool isAtBottom = _scrollOffset == maxOffsetBefore;
 
             _lines.Add((text, color));
-            int id = _lines.Count - 1;
+            int lineId = _lines.Count - 1;
 
             if (isAtBottom)
             {
@@ -28,7 +28,7 @@ namespace NovaLight.Console
             ClampScrollOffset();
             SetNeedsDisplay();
 
-            return id;
+            return lineId;
         }
 
         private void ClampScrollOffset()

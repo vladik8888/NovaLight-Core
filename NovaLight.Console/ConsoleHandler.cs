@@ -1,6 +1,4 @@
-﻿using NovaLight.Core;
-using Terminal.Gui;
-using static System.Net.Mime.MediaTypeNames;
+﻿using Terminal.Gui;
 using static Terminal.Gui.View;
 using Application = Terminal.Gui.Application;
 using Color = Terminal.Gui.Color;
@@ -8,37 +6,40 @@ using Window = Terminal.Gui.Window;
 
 namespace NovaLight.Console
 {
-    public delegate void MessageReceived(string message, int id);
+    public delegate void MessageReceived(string message, int lineId);
     public delegate void InputReceived(string input);
 
     public static class ConsoleHandler
     {
-        private static AssemblyContext? _assemblyContext;
-        public static void SwitchAssemblyContext(AssemblyContext? assemblyContext, bool loadLogsHistroy = false)
-        {
-            if (_assemblyContext != null)
-                _assemblyContext.Logger.OnLog -= OnLog;
+        //private static AssemblyContext? _assemblyContext;
+        //public static void SwitchAssemblyContext(AssemblyContext? assemblyContext, bool loadLogsHistroy = false)
+        //{
+        //    if (_assemblyContext != null)
+        //        _assemblyContext.Logger.OnLog -= OnLog;
 
-            _assemblyContext = assemblyContext;
-            if (_assemblyContext != null)
-            {
-                WriteMessage($"{Environment.NewLine}Switching the console to a different AssemblyContext has been completed.", Color.BrightYellow);
-                _assemblyContext.Logger.OnLog += OnLog;
+        //    _assemblyContext = assemblyContext;
+        //    if (_assemblyContext != null)
+        //    {
+        //        WriteMessage($"{Environment.NewLine}Switching the console to a different AssemblyContext has been completed.", Color.BrightYellow);
+        //        _assemblyContext.Logger.OnLog += OnLog;
 
-                if (loadLogsHistroy)
-                    foreach (string message in _assemblyContext.Logger.Logs)
-                        OnLog(message);
-            }
-        }
-
-        private static void OnLog(string message) => WriteMessage(message);
+        //        if (loadLogsHistroy)        //            foreach (string message in _assemblyContext.Logger.Logs)
+        //                OnLog(message);
+        //    }
+        //}
+        //private static void OnLog(string message) => WriteMessage(message);
 
         private static ColorTextView _colorTextView = null!;
         private static TextField _inputField = null!;
         private static Window _mainWindow = null!;
 
+        private static bool _init = false;
         public static void Init(bool showLogo = true)
         {
+            if (_init)
+                throw new InvalidOperationException();
+            _init = true;
+
             Application.Init();
 
             Thread thread = new(() => Application.Run());
@@ -85,17 +86,6 @@ namespace NovaLight.Console
 
             if (showLogo)
             {
-                //_colorTextView.WriteMessage("----------------------------------------------------------------------------------------------", Color.Cyan);
-                //_colorTextView.WriteMessage("___  ___                 _____ _           _   _     _       _     _     _____                ", Color.Cyan);
-                //_colorTextView.WriteMessage("|  \\/  |                /  __ \\ |         | | | |   (_)     | |   | |   /  __ \\               ", Color.Cyan);
-                //_colorTextView.WriteMessage("| .  . | ___  __ _  __ _| /  \\/ |__   __ _| |_| |    _  __ _| |__ | |_  | /  \\/ ___  _ __ ___ ", Color.Cyan);
-                //_colorTextView.WriteMessage("| |\\/| |/ _ \\/ _` |/ _` | |   | '_ \\ / _` | __| |   | |/ _` | '_ \\| __| | |    / _ \\| '__/ _ \\", Color.Cyan);
-                //_colorTextView.WriteMessage("| |  | |  __/ (_| | (_| | \\__/\\ | | | (_| | |_| |___| | (_| | | | | |_  | \\__/\\ (_) | | |  __/", Color.Cyan);
-                //_colorTextView.WriteMessage("\\_|  |_/\\___|\\__, |\\__,_|\\____/_| |_|\\__,_|\\__\\_____/_|\\__, |_| |_|\\__|  \\____/\\___/|_|  \\___|", Color.Cyan);
-                //_colorTextView.WriteMessage("              __/ |                                     __/ |                                 ", Color.Cyan);
-                //_colorTextView.WriteMessage("             |___/                                     |___/                                  ", Color.Cyan);
-                //_colorTextView.WriteMessage("----------------------------------------------------------------------------------------------", Color.Cyan);
-
                 WriteMessage("------------------------------------------------------------------------------------------------", Color.Cyan);
                 WriteMessage(" ______ |\\                     ___     __         /\\      __    _________                       ", Color.Cyan);
                 WriteMessage(" \\     \\| | ____ ___  ______  |   |   |__|  ____ |  |__ _/  |_  \\_   ___ \\  ____ _______  ____  ", Color.Cyan);
@@ -106,7 +96,7 @@ namespace NovaLight.Console
                 WriteMessage("------------------------------------------------------------------------------------------------", Color.Cyan);
 
                 WriteMessage("Lightweight modular core for console applications", Color.Green);
-                WriteMessage($"Developed by CDW Studio", Color.Green);
+                WriteMessage($"Developed by CDW Studio {Environment.NewLine}", Color.Green);
             }
         }
 
@@ -118,22 +108,17 @@ namespace NovaLight.Console
                 _inputField.Text = "";
 
                 HandleInput(text);
-
                 key.Handled = true;
             }
         }
 
-        public static void HandleInput(string? text)
+        public static void HandleInput(string? command)
         {
-            if (string.IsNullOrEmpty(text))
+            if (string.IsNullOrEmpty(command))
                 return;
 
-            _colorTextView.WriteMessage($">> {text}", Color.Green);
-
-            Task.Run(() =>
-            {
-                InputReceived?.Invoke(text);
-            });
+            _colorTextView.WriteMessage($">> {command}", Color.Green);
+            Task.Run(() => InputReceived?.Invoke(command));
         }
 
         public static string[] Lines => _colorTextView.Lines;
@@ -151,8 +136,8 @@ namespace NovaLight.Console
 
             Application.MainLoop.Invoke(() =>
             {
-                int id = _colorTextView.WriteMessage(text, color);
-                MessageReceived?.Invoke(text, id);
+                int lineId = _colorTextView.WriteMessage(text, color);
+                MessageReceived?.Invoke(text, lineId);
             });
         }
     }

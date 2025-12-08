@@ -6,8 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\NovaLight.Core.Interaction\NovaLight.Core.Interaction.csproj" />
-  </ItemGroup>
-
 </Project>

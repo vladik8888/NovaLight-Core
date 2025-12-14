@@ -1,16 +1,25 @@
-﻿using System.Diagnostics;
+﻿using Mono.Cecil;
+using NovaLight.Core.Service;
+using System;
+using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
+using IServiceProvider = NovaLight.Core.Service.IServiceProvider;
 
 namespace NovaLight.Core
 {
-    public class AssemblyContext : IDisposable
+    public class AssemblyContext
     {
+        private readonly static List<AssemblyContext> _assemblyContexts = [];
+        public static AssemblyContext[] AllAssemblyContexts => [.. _assemblyContexts];
+
         internal AssemblyLoadContext AssemblyLoadContext { get; }
         public Assembly[] Assemblies => [.. AssemblyLoadContext.Assemblies];
-
         public bool IsActive { get; private set; }
-        public Logger Logger { get; } = new();
+        public Logger Logger { get; }
+        private readonly List<ServiceController> _serviceControllers = [];
+        public IServiceProvider ServiceProvider { get; }
 
         public static AssemblyContext Current
         {
@@ -25,8 +34,15 @@ namespace NovaLight.Core
                         continue;
 
                     Assembly assembly = method.Module.Assembly;
-                    AssemblyContext? assemblyContext = assembly.GetAssemblyContext();
+                    AssemblyLoadContext? assemblyLoadContext = AssemblyLoadContext.GetLoadContext(assembly);
+                    if (assemblyLoadContext == AssemblyLoadContext.Default)
+                        continue;
 
+                    AssemblyContext? assemblyContext = AllAssemblyContexts.ToList()
+                        .FirstOrDefault(x => x.AssemblyLoadContext.Equals(assemblyLoadContext));
+
+                    if (assemblyContext == null)
+                        continue;
                     return assemblyContext;
                 }
 
@@ -34,64 +50,148 @@ namespace NovaLight.Core
             }
         }
 
-        public AssemblyContext()
+        public AssemblyContext(Logger? logger = null, IServiceProvider? serviceProvider = null)
         {
             AssemblyLoadContext = new($"AssemblyContext", isCollectible: true);
 
             AssemblyLoadContext.Unloading += OnUnloading;
-            AssemblyContextContainer.Add(this);
+            _assemblyContexts.Add(this);
+
+            Logger = logger ?? new();
+            ServiceProvider = serviceProvider ?? new BaseServiceProvider();
         }
 
-        public void LoadModule(string path)
-        {
-            FileInfo file = new(path);
-            LoadModule(file);
-        }
-        public void LoadModule(FileInfo file)
+        public Assembly LoadAssemblyFromFile(FileInfo file)
         {
             using FileStream fileStream = file.OpenRead();
+            AssemblyDefinition assemblyDefinition = AssemblyDefinition.ReadAssembly(fileStream);
 
-            Assembly assembly = AssemblyLoadContext.LoadFromStream(fileStream);
+            string missingDependency = "";
+            foreach (AssemblyNameReference reference in assemblyDefinition.MainModule.AssemblyReferences)
+            {
+                bool isLoadedInCurrentContext = Assemblies.Any(x => x.GetName().Name == reference.Name);
+                bool isLoadedInDefaultContext = AssemblyLoadContext.Default.Assemblies.Any(x => x.GetName().Name == reference.Name);
 
-            int lenWithoutExtension = file.Name.Length - 3;
-            Logger.Log($"Module {file.Name[..(lenWithoutExtension - 1)]} loaded.");
+                if (!isLoadedInCurrentContext && !isLoadedInDefaultContext)
+                    missingDependency += $"{reference.Name} ";
+            }
+            if (!string.IsNullOrEmpty(missingDependency))
+            {
+                Logger.Log($"Missing dependency: {missingDependency}");
+                throw new InvalidOperationException($"Missing dependency: {missingDependency}");
+            }
 
-            if (IsActive) assembly.InvokeRunHandle();
-        }
+            static bool InheritsFrom(TypeDefinition type, string baseFullName)
+            {
+                TypeReference? current = type.BaseType;
+                while (current != null)
+                {
+                    if (current.FullName == baseFullName)
+                        return true;
+                    current = current.Resolve()?.BaseType;
+                }
+                return false;
+            }
 
-        private Assembly[] ArrangeModulesByDependency()
-        {
-            List<Assembly> modules = [.. Assemblies];
-            List<Assembly> arrangedModules = [];
+            Type? ResolveTypeByName(string fullName)
+            {
+                Type? type = Assemblies.SelectMany(x => x.GetTypes()).FirstOrDefault(t => t.FullName == fullName);
+                if (type != null) return type;
+
+                type = AssemblyLoadContext.Default.Assemblies.SelectMany(x => x.GetTypes()).FirstOrDefault(t => t.FullName == fullName);
+                if (type != null) return type;
+
+                return null;
+            }
+
+            string serviceControllerFullName = typeof(ServiceController).FullName!;
+            List<TypeDefinition> serviceTypes = [.. assemblyDefinition.MainModule.Types
+                .Where(x => !x.IsAbstract && !x.IsInterface)
+                .Where(x => InheritsFrom(x, serviceControllerFullName))];
+            List<TypeDefinition> loadedServiceTypes = [];
 
             int attemps = 1000;
-            while (modules.Count > 0)
+            while (serviceTypes.Count > 0)
             {
-                for (int i = 0; i < modules.Count; i++)
+                for (int i = 0; i < serviceTypes.Count; i++)
                 {
-                    Assembly module = modules[i];
+                    TypeDefinition serviceType = serviceTypes[i];
 
-                    AssemblyName[] references = module.GetReferencedAssemblies();
-                    AssemblyName[] assemblies = [.. modules.Select(x => x.GetName())];
+                    MethodDefinition constructor = serviceType.Methods
+                        .Where(x => x.IsConstructor && x.IsPublic)
+                        .OrderByDescending(x => x.Parameters.Count)
+                        .First();
 
-                    foreach (AssemblyName assembly in assemblies)
-                        foreach (AssemblyName reference in references)
-                            if (assembly.FullName == reference.FullName)
-                                goto Skip;
+                    foreach (ParameterDefinition parameter in constructor.Parameters)
+                    {
+                        string parameterTypeFullName = parameter.ParameterType.FullName;
 
-                    arrangedModules.Add(module);
-                    modules.Remove(module);
+                        if (loadedServiceTypes.Any(loadedType => loadedType.FullName == parameterTypeFullName))
+                            continue;
+
+                        Type? parameterType = ResolveTypeByName(parameterTypeFullName);
+                        if (parameterType == null) goto Skip;
+
+                        object? service = ServiceProvider.GetService(parameterType);
+                        if (service == null) goto Skip;
+                    }
+
                     i--;
+                    serviceTypes.Remove(serviceType);
+                    loadedServiceTypes.Add(serviceType);
 
                     Skip:;
                 }
 
                 attemps--;
                 if (attemps <= 0)
-                    throw new Exception("The maximum number of attempts to arrange the modules has been reached.");
+                    throw new InvalidOperationException("Missing dependency in DI-services.");
             }
 
-            return [.. arrangedModules];
+            fileStream.Seek(0, SeekOrigin.Begin);
+            Assembly assembly = AssemblyLoadContext.LoadFromStream(fileStream);
+            foreach (Type serviceType in loadedServiceTypes.Select(x => ResolveTypeByName(x.FullName)!))
+            {
+                ConstructorInfo constructor = serviceType.GetConstructors()
+                    .OrderByDescending(x => x.GetParameters().Length)
+                    .First();
+
+                ParameterInfo[] parameters = constructor.GetParameters();
+                object?[] parameterInstances = [.. parameters.Select(x => ServiceProvider.GetService(x.ParameterType))];
+
+                ServiceController service = (ServiceController)Activator.CreateInstance(serviceType, parameterInstances)!;
+                _serviceControllers.Add(service);
+                ServiceProvider.RegisterService(serviceType, service);
+                Logger.Log($"The service {service.GetType().Name} has been registered.");
+
+                if (IsActive) RunService(service);
+            }
+            return assembly;
+        }
+
+        public void RunService(ServiceController service)
+        {
+            try
+            {
+                service.OnServiceRun();
+                Logger.Log($"The service {service.GetType().Name} has been started.");
+            }
+            catch (Exception exception)
+            {
+                Logger.Log($"Error occurred while starting the service {service.GetType().Name}: {exception.Message}.");
+            }
+        }
+        public void StopService(ServiceController service)
+        {
+            try
+            {
+                service.OnServiceStop();
+                Logger.Log($"The service {service.GetType().Name} has been stopped.");
+            }
+            catch (Exception exception)
+            {
+                Logger.Log($"Error occurred while stopping the service {service.GetType().Name}: {exception.Message}.");
+            }
         }
 
         public void Run()
@@ -100,9 +200,10 @@ namespace NovaLight.Core
             if (IsActive) return;
 
             IsActive = true;
-            Assembly[] modules = ArrangeModulesByDependency();
-            foreach (Assembly assembly in modules)
-                assembly.InvokeRunHandle();
+            foreach (ServiceController service in _serviceControllers)
+                RunService(service);
+
+            Logger.Log("AssemblyContext has been started.");
         }
         public void Stop()
         {
@@ -110,28 +211,44 @@ namespace NovaLight.Core
             if (!IsActive) return;
 
             IsActive = false;
-            Assembly[] reversedModules = [.. ArrangeModulesByDependency().Reverse()];
-            foreach (Assembly assembly in reversedModules)
-                assembly.InvokeStopHandle();
+            ServiceController[] reversedServices = [.. _serviceControllers.AsEnumerable().Reverse()];
+            foreach (ServiceController service in reversedServices)
+                StopService(service);
+
+            Logger.Log("AssemblyContext has been stopped.");
         }
 
         private void OnUnloading(AssemblyLoadContext assemblyLoadContext)
         {
             AssemblyLoadContext.Unloading -= OnUnloading;
-            AssemblyContextContainer.Remove(this);
+            _assemblyContexts.Remove(this);
         }
 
         private bool _disposed = false;
-        public void Dispose()
+        public void Unload()
         {
             if (_disposed) return;
             IsActive = false;
             _disposed = true;
 
-            Logger.Log("AssemblyContext has been successfully unloaded.");
+            ServiceController[] reversedServices = [.. _serviceControllers.AsEnumerable().Reverse()];
+            foreach (ServiceController service in reversedServices)
+            {
+                try
+                {
+                    service.OnServiceUnload();
+                    ServiceProvider.UnregisterService(service);
+                    Logger.Log($"The service {service.GetType().Name} has been unloaded.");
+                }
+                catch (Exception exception)
+                {
+                    Logger.Log($"Error occurred while unloading the service {service.GetType().Name}: {exception.Message}.");
+                }
+            }
+
+            Logger.Log("AssemblyContext has been unloaded.");
 
             AssemblyLoadContext.Unload();
-            GC.SuppressFinalize(this);
         }
     }
 }

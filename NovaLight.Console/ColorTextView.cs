@@ -99,19 +99,17 @@ namespace NovaLight.Console
             int startLine = _scrollOffset;
             int endLine = Math.Min(_lines.Count, startLine + visibleHeight);
 
-            int y = 0;
+            int row = 0;
             for (int i = startLine; i < endLine; i++)
             {
-                var (text, color) = _lines[i];
-                var attr = new Attribute(color, Color.Black);
-                Driver.SetAttribute(attr);
-                Move(0, y);
+                (string text, Color color) = _lines[i];
+                Attribute attribute = new(color, Color.Black);
+                Driver.SetAttribute(attribute);
+                Move(0, row);
 
-                foreach (var ch in text)
-                {
+                foreach (char ch in text)
                     Driver.AddRune(new Rune(ch));
-                }
-                y++;
+                row++;
             }
         }
     }

@@ -11,34 +11,16 @@ namespace NovaLight.Console
 
     public static class ConsoleHandler
     {
-        //private static AssemblyContext? _assemblyContext;
-        //public static void SwitchAssemblyContext(AssemblyContext? assemblyContext, bool loadLogsHistroy = false)
-        //{
-        //    if (_assemblyContext != null)
-        //        _assemblyContext.Logger.OnLog -= OnLog;
-
-        //    _assemblyContext = assemblyContext;
-        //    if (_assemblyContext != null)
-        //    {
-        //        WriteMessage($"{Environment.NewLine}Switching the console to a different AssemblyContext has been completed.", Color.BrightYellow);
-        //        _assemblyContext.Logger.OnLog += OnLog;
-
-        //        if (loadLogsHistroy)        //            foreach (string message in _assemblyContext.Logger.Logs)
-        //                OnLog(message);
-        //    }
-        //}
-        //private static void OnLog(string message) => WriteMessage(message);
-
+        private static Window _mainWindow = null!;
         private static ColorTextView _colorTextView = null!;
         private static TextField _inputField = null!;
-        private static Window _mainWindow = null!;
 
-        private static bool _init = false;
+        private static bool _initializated = false;
         public static void Init(bool showLogo = true)
         {
-            if (_init)
-                throw new InvalidOperationException();
-            _init = true;
+            if (_initializated)
+                throw new InvalidOperationException("The ConsoleHandler is already initializated.");
+            _initializated = true;
 
             Application.Init();
 
@@ -96,7 +78,7 @@ namespace NovaLight.Console
                 WriteMessage("------------------------------------------------------------------------------------------------", Color.Cyan);
 
                 WriteMessage("Lightweight modular core for console applications", Color.Green);
-                WriteMessage($"Developed by CDW Studio {Environment.NewLine}", Color.Green);
+                WriteMessage($"Developed by CDW Studio \n", Color.Green);
             }
         }
 
@@ -127,9 +109,9 @@ namespace NovaLight.Console
 
         public static void WriteMessage(string text, Color color = Color.Gray)
         {
-            if (text.Contains(Environment.NewLine))
+            string[] splittedText = text.Split("\n");
+            if (splittedText.Length > 1)
             {
-                string[] splittedText = text.Split(Environment.NewLine);
                 splittedText.ToList().ForEach(x => WriteMessage(x, color));
                 return;
             }

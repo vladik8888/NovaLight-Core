@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovaLight.Core", "NovaLight
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovaLight.Console", "NovaLight.Console\NovaLight.Console.csproj", "{7E1198F2-4327-D529-7B37-863D27AAA1B1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovaLight.Core.Interaction", "NovaLight.Core.Interaction\NovaLight.Core.Interaction.csproj", "{AE86BC5C-5FE6-409E-B0EA-0CA0E0DF93DF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovaLight.Example", "NovaLight.Example\NovaLight.Example.csproj", "{D09D1261-FBBC-4701-9DF6-E61E1714E15A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,10 @@ Global
 		{7E1198F2-4327-D529-7B37-863D27AAA1B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7E1198F2-4327-D529-7B37-863D27AAA1B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7E1198F2-4327-D529-7B37-863D27AAA1B1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AE86BC5C-5FE6-409E-B0EA-0CA0E0DF93DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AE86BC5C-5FE6-409E-B0EA-0CA0E0DF93DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AE86BC5C-5FE6-409E-B0EA-0CA0E0DF93DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AE86BC5C-5FE6-409E-B0EA-0CA0E0DF93DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D09D1261-FBBC-4701-9DF6-E61E1714E15A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D09D1261-FBBC-4701-9DF6-E61E1714E15A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D09D1261-FBBC-4701-9DF6-E61E1714E15A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D09D1261-FBBC-4701-9DF6-E61E1714E15A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

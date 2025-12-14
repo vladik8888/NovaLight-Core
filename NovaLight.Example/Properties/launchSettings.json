@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "NovaLight.Example": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

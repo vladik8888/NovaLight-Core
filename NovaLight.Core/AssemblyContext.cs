@@ -20,7 +20,7 @@ namespace NovaLight.Core
         private readonly List<ServiceController> _serviceControllers = [];
         public IServiceProvider ServiceProvider { get; }
 
-        public static AssemblyContext Current
+        public static AssemblyContext? Current
         {
             get
             {
@@ -33,19 +33,14 @@ namespace NovaLight.Core
                         continue;
 
                     Assembly assembly = method.Module.Assembly;
-                    AssemblyLoadContext? assemblyLoadContext = AssemblyLoadContext.GetLoadContext(assembly);
-                    if (assemblyLoadContext == AssemblyLoadContext.Default)
-                        continue;
-
-                    AssemblyContext? assemblyContext = AllAssemblyContexts.ToList()
-                        .FirstOrDefault(x => x.AssemblyLoadContext.Equals(assemblyLoadContext));
-
+                    AssemblyContext? assemblyContext = assembly.GetAssemblyContext();
                     if (assemblyContext == null)
                         continue;
+
                     return assemblyContext;
                 }
 
-                throw new InvalidOperationException();
+                return null;
             }
         }
 
@@ -60,7 +55,7 @@ namespace NovaLight.Core
             ServiceProvider = serviceProvider ?? new BaseServiceProvider();
         }
 
-        public Assembly LoadAssemblyFromFile(FileInfo file)
+        public Assembly LoadAssembly(FileInfo file)
         {
             using FileStream fileStream = file.OpenRead();
             AssemblyDefinition assemblyDefinition = AssemblyDefinition.ReadAssembly(fileStream);
@@ -96,7 +91,6 @@ namespace NovaLight.Core
                 })];
             List<TypeDefinition> loadedServiceTypes = [];
 
-            int attemps = 1000;
             while (serviceTypes.Count > 0)
             {
                 bool progress = false;
@@ -129,11 +123,7 @@ namespace NovaLight.Core
                 }
 
                 if (!progress)
-                {
-                    attemps--;
-                    if (attemps <= 0)
-                        throw new InvalidOperationException("Unknown dependency missing in DI-services.");
-                }
+                    throw new InvalidOperationException("Unknown dependency missing in DI-services.");
             }
 
             fileStream.Seek(0, SeekOrigin.Begin);
@@ -157,6 +147,32 @@ namespace NovaLight.Core
             }
             return assembly;
         }
+        //public Assembly[] LoadAssemblies(FileInfo[] files)
+        //{
+        //    List<FileInfo> filesList = [.. files];
+        //    List<Assembly> assemblies = [];
+        //    while (filesList.Count > 0)
+        //    {
+        //        bool progress = false;
+        //        for (int i = 0; i < filesList.Count; i++)
+        //        {
+        //            FileInfo file = filesList[i];
+        //            try
+        //            {
+        //                Assembly assembly = LoadAssembly(file);
+        //                assemblies.Add(assembly);
+        //            }
+        //            catch
+        //            {
+        //                continue;
+        //            }
+
+        //            filesList.RemoveAt(i);
+        //            progress = true;
+        //            i--;
+        //        }
+        //    }
+        //}
 
         private Type? ResolveTypeByName(string fullName)
         {

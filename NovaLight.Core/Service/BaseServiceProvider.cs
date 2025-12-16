@@ -39,13 +39,12 @@ namespace NovaLight.Core.Service
         {
             if (_registrations.TryGetValue(serviceType, out object? service))
                 return service;
-            if (serviceType.IsAbstract || serviceType.IsInterface)
-                foreach (object value in _registrations.Values)
-                {
-                    Type currentType = value.GetType();
-                    if (serviceType.IsAssignableFrom(currentType))
-                        return value;
-                }
+            foreach (object value in _registrations.Values)
+            {
+                Type currentType = value.GetType();
+                if (serviceType.IsAssignableFrom(currentType))
+                    return value;
+            }
             return null;
         }
     }

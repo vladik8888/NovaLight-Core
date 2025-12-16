@@ -1,4 +1,5 @@
 ﻿using Mono.Cecil;
+using NovaLight.Core.Extensions;
 using NovaLight.Core.Service;
 using System;
 using System.Diagnostics;
@@ -81,38 +82,26 @@ namespace NovaLight.Core
                 throw new InvalidOperationException($"Missing dependency: {missingDependency}");
             }
 
-            static bool InheritsFrom(TypeDefinition type, string baseFullName)
-            {
-                TypeReference? current = type.BaseType;
-                while (current != null)
-                {
-                    if (current.FullName == baseFullName)
-                        return true;
-                    current = current.Resolve()?.BaseType;
-                }
-                return false;
-            }
-
-            Type? ResolveTypeByName(string fullName)
-            {
-                Type? type = Assemblies.SelectMany(x => x.GetTypes()).FirstOrDefault(t => t.FullName == fullName);
-                if (type != null) return type;
-
-                type = AssemblyLoadContext.Default.Assemblies.SelectMany(x => x.GetTypes()).FirstOrDefault(t => t.FullName == fullName);
-                if (type != null) return type;
-
-                return null;
-            }
-
             string serviceControllerFullName = typeof(ServiceController).FullName!;
             List<TypeDefinition> serviceTypes = [.. assemblyDefinition.MainModule.Types
                 .Where(x => !x.IsAbstract && !x.IsInterface)
-                .Where(x => InheritsFrom(x, serviceControllerFullName))];
+                .Where(x =>
+                {
+                    TypeReference? current = x.BaseType;
+                    while (current != null)
+                    {
+                        if (current.FullName == serviceControllerFullName)
+                            return true;
+                        current = current.Resolve()?.BaseType;
+                    }
+                    return false;
+                })];
             List<TypeDefinition> loadedServiceTypes = [];
 
             int attemps = 1000;
             while (serviceTypes.Count > 0)
             {
+                bool progress = false;
                 for (int i = 0; i < serviceTypes.Count; i++)
                 {
                     TypeDefinition serviceType = serviceTypes[i];
@@ -124,32 +113,34 @@ namespace NovaLight.Core
 
                     foreach (ParameterDefinition parameter in constructor.Parameters)
                     {
-                        string parameterTypeFullName = parameter.ParameterType.FullName;
-
-                        if (loadedServiceTypes.Any(loadedType => loadedType.FullName == parameterTypeFullName))
+                        TypeDefinition parameterTypeDefinition = parameter.ParameterType.Resolve();
+                        if (loadedServiceTypes.Any(parameterTypeDefinition.InheritsFrom))
                             continue;
 
-                        Type? parameterType = ResolveTypeByName(parameterTypeFullName);
-                        if (parameterType == null) goto Skip;
-
+                        Type? parameterType = ResolveTypeByName(parameterTypeDefinition.FullName)!;
                         object? service = ServiceProvider.GetService(parameterType);
                         if (service == null) goto Skip;
                     }
 
-                    i--;
-                    serviceTypes.Remove(serviceType);
+                    serviceTypes.RemoveAt(i);
                     loadedServiceTypes.Add(serviceType);
+                    progress = true;
+                    i--;
 
                     Skip:;
                 }
 
-                attemps--;
-                if (attemps <= 0)
-                    throw new InvalidOperationException("Missing dependency in DI-services.");
+                if (!progress)
+                {
+                    attemps--;
+                    if (attemps <= 0)
+                        throw new InvalidOperationException("Missing dependency in DI-services.");
+                }
             }
 
             fileStream.Seek(0, SeekOrigin.Begin);
             Assembly assembly = AssemblyLoadContext.LoadFromStream(fileStream);
+            Logger.Log($"The assembly {assembly.GetName().Name} has been loaded.");
             foreach (Type serviceType in loadedServiceTypes.Select(x => ResolveTypeByName(x.FullName)!))
             {
                 ConstructorInfo constructor = serviceType.GetConstructors()
@@ -167,6 +158,21 @@ namespace NovaLight.Core
                 if (IsActive) RunService(service);
             }
             return assembly;
+        }
+
+        private Type? ResolveTypeByName(string fullName)
+        {
+            Type? type = Assemblies
+                .SelectMany(x => x.GetTypes())
+                .FirstOrDefault(x => x.FullName == fullName);
+            if (type != null) return type;
+
+            type = AssemblyLoadContext.Default.Assemblies
+                .SelectMany(x => x.GetTypes())
+                .FirstOrDefault(x => x.FullName == fullName);
+            if (type != null) return type;
+
+            return null;
         }
 
         public void RunService(ServiceController service)

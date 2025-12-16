@@ -1,10 +1,8 @@
 ﻿using Mono.Cecil;
 using NovaLight.Core.Extensions;
 using NovaLight.Core.Service;
-using System;
 using System.Diagnostics;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using IServiceProvider = NovaLight.Core.Service.IServiceProvider;
 
@@ -134,7 +132,7 @@ namespace NovaLight.Core
                 {
                     attemps--;
                     if (attemps <= 0)
-                        throw new InvalidOperationException("Missing dependency in DI-services.");
+                        throw new InvalidOperationException("Unknown dependency missing in DI-services.");
                 }
             }
 

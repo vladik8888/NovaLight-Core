@@ -15,5 +15,6 @@ logger.OnLog += (message) => ConsoleHandler.WriteMessage(message);
 
 AssemblyContext assemblyContext = new(logger);
 foreach (FileInfo file in files)
-    assemblyContext.LoadAssemblyFromFile(file);
+    //Будьте внимательны с порядком загрузки таким образом
+    assemblyContext.LoadAssemblyFromFile(file); 
 assemblyContext.Run();
